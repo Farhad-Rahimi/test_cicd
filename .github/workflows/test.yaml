@@ -57,7 +57,7 @@ jobs:
           # Use the commit SHA as the release tag for uniqueness
           tag: ${{ github.sha }}
           # Use the GitHub token to authenticate
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TOKEN }}
           # Upload the generated installer
           artifacts: "build/windows/installer/Output/Doctor_Assistant.exe"  # Adjust path based on your Inno Setup script
           body: |

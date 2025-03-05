@@ -1,28 +1,26 @@
-name: Build and Release Windows Installer
+name: Build and Commit Windows Installer
 
 on:
-    push:
-        branches:
-          - master    # Trigger on pushes to the main branch
+  push:
+    branches:
+      - master  # Trigger on pushes to the master branch
 
 jobs:
-  build-and-release:
+  build-and-commit:
     runs-on: windows-latest  # Use a Windows runner
-    permissions:  # Grant permissions to create releases
-      contents: write
-      packages: write
-      id-token: write
 
     steps:
-      # 1. Checkout the code from GitHub
+      # 1. Checkout the code with persistent credentials for pushing changes
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      # 2. Set up Flutter SDK
+      # 2. Set up the Flutter SDK
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'  # Use the stable Flutter channel
+          channel: 'stable'
 
       # 3. Get Flutter dependencies
       - name: Get Dependencies
@@ -37,15 +35,13 @@ jobs:
         run: |
           choco install innosetup --yes
 
-      # 6. Create the installer directory
+      # 6. Create the installer directory if it doesn't exist
       - name: Create Installer Directory
-        run: |
-          mkdir build\windows\installer
+        run: mkdir build\windows\installer
 
       # 7. Copy the Inno Setup script to the build directory
       - name: Copy Inno Setup Script
-        run: |
-          copy desktop_ino_script.iss build\windows\installer\setup.iss
+        run: copy desktop_ino_script.iss build\windows\installer\setup.iss
 
       # 8. Generate the Windows installer using Inno Setup
       - name: Create Installer
@@ -53,25 +49,19 @@ jobs:
           cd build\windows\installer
           ISCC setup.iss
 
-      # 9. Create the Release Tag (prepend "v" to avoid 40-char SHA)
-      - name: Create Release Tag
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git tag -a "v${{ github.sha }}" -m "Release tag from commit ${{ github.sha }}"
+      # 9. Create the misc folder in the repository if it doesn't exist
+      - name: Create misc folder
+        run: if not exist misc mkdir misc
 
-      # 10. Upload the installer as a GitHub Release
-      - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
-        with:
-          # Use the tag with "v" prefix to avoid the 40-char SHA issue
-          tag: v${{ github.sha }}
-          # Use the PAT stored in the "ACTION" secret
-          token: ${{ secrets.ACTION }}
-          # Path to the generated installer
-          artifacts: "build/windows/installer/Output/Doctor_Assistant.exe"
-          body: |
-            ## Release Notes
-            - Built from commit: [${{ github.sha }}](${{
-              github.server_url
-            }}/${{ github.repository }}/commit/${{ github.sha }})
+      # 10. Move the built installer EXE to the misc folder
+      - name: Move Installer to misc folder
+        run: move build\windows\installer\Output\Doctor_Assistant.exe misc\Doctor_Assistant.exe
+
+      # 11. Commit and push the installer to the repository
+      - name: Commit Installer to Repo
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add misc/Doctor_Assistant.exe
+          git commit -m "Add built Windows installer [skip ci]" || echo "No changes to commit"
+          git push

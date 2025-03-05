@@ -3,65 +3,59 @@ name: Build and Commit Windows Installer
 on:
   push:
     branches:
-      - master  # Trigger on pushes to the master branch
+      - master
+
+# Grant the Actions workflow write permission to push changes
+permissions:
+  contents: write
 
 jobs:
   build-and-commit:
-    runs-on: windows-latest  # Use a Windows runner
+    runs-on: windows-latest
 
     steps:
-      # 1. Checkout the code with persistent credentials for pushing changes
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      # 2. Set up the Flutter SDK
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # 3. Get Flutter dependencies
       - name: Get Dependencies
         run: flutter pub get
 
-      # 4. Build the Flutter Windows app
       - name: Build Flutter App
         run: flutter build windows --release
 
-      # 5. Install Inno Setup (to create the installer)
       - name: Install Inno Setup
         run: choco install innosetup --yes
+        shell: cmd
 
-      # 6. Create the installer directory if it doesn't exist
       - name: Create Installer Directory
         run: mkdir build\windows\installer
         shell: cmd
 
-      # 7. Copy the Inno Setup script to the build directory
       - name: Copy Inno Setup Script
         run: copy desktop_ino_script.iss build\windows\installer\setup.iss
         shell: cmd
 
-      # 8. Generate the Windows installer using Inno Setup
       - name: Create Installer
         run: |
           cd build\windows\installer
           ISCC setup.iss
         shell: cmd
 
-      # 9. Create the misc folder in the repository if it doesn't exist
       - name: Create misc folder
         run: if not exist misc mkdir misc
         shell: cmd
 
-      # 10. Move the built installer EXE to the misc folder
       - name: Move Installer to misc folder
         run: move build\windows\installer\Output\Doctor_Assistant.exe misc\Doctor_Assistant.exe
         shell: cmd
 
-      # 11. Commit and push the installer to the repository
       - name: Commit Installer to Repo
         run: |
           git config --local user.email "action@github.com"

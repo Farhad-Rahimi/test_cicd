@@ -1,0 +1,61 @@
+name: Build and Release Windows Installer
+
+on:
+  push:
+    branches: [main]  # Trigger on pushes to the main branch
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest  # Use a Windows runner
+
+    steps:
+      # 1. Checkout the code from GitHub
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Flutter SDK
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'  # Use the stable Flutter channel
+
+      # 3. Get Flutter dependencies
+      - name: Get Dependencies
+        run: flutter pub get
+
+      # 4. Build the Flutter Windows app
+      - name: Build Flutter App
+        run: flutter build windows --release
+
+      # 5. Install Inno Setup (to create the installer)
+      - name: Install Inno Setup
+        run: |
+          # Use Chocolatey to install Inno Setup
+          choco install innosetup --yes
+
+      # 6. Copy the Inno Setup script to the build directory
+      - name: Copy Inno Setup Script
+        run: |
+          mkdir build\windows\installer
+          copy setup.iss build\windows\installer\setup.iss
+
+      # 7. Generate the Windows installer using Inno Setup
+      - name: Create Installer
+        run: |
+          cd build\windows\installer
+          desktop_ino_script.iss  # Ensure setup.iss is in the build\windows\installer directory
+      # 8. Upload the installer as a GitHub Release
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          # Use the commit SHA as the release tag for uniqueness
+          tag: ${{ github.sha }}
+          # Use the GitHub token to authenticate
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Upload the generated installer
+          artifacts: "build/windows/installer/Output/Doctor_Assistant.exe"  # Adjust path based on your Inno Setup script
+          body: |
+            ## Release Notes
+            - Built from commit: [${{ github.sha }}](${{
+              github.server_url
+            }}/${{ github.repository }}/commit/${{ github.sha }})

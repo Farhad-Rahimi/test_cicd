@@ -2,7 +2,8 @@ name: Build and Release Windows Installer
 
 on:
   push:
-    branches: [main]  # Trigger on pushes to the main branch
+    branches:
+      - main  # Trigger on pushes to the main branch
 
 jobs:
   build-and-release:

@@ -1,13 +1,17 @@
 name: Build and Release Windows Installer
 
 on:
-  push:
-    branches:
-      - master  # Trigger on pushes to the main branch
+    push:
+        branches:
+          - master    # Trigger on pushes to the main branch
 
 jobs:
   build-and-release:
     runs-on: windows-latest  # Use a Windows runner
+    permissions:  # Grant permissions to create releases
+      contents: write
+      packages: write
+      id-token: write
 
     steps:
       # 1. Checkout the code from GitHub
@@ -31,10 +35,9 @@ jobs:
       # 5. Install Inno Setup (to create the installer)
       - name: Install Inno Setup
         run: |
-          # Use Chocolatey to install Inno Setup
           choco install innosetup --yes
 
-      # 6. Create the installer directory if it doesn't exist
+      # 6. Create the installer directory
       - name: Create Installer Directory
         run: |
           mkdir build\windows\installer
@@ -42,24 +45,31 @@ jobs:
       # 7. Copy the Inno Setup script to the build directory
       - name: Copy Inno Setup Script
         run: |
-          copy desktop_ino_script.iss build\windows\installer\setup.iss  # Use the actual script name
+          copy desktop_ino_script.iss build\windows\installer\setup.iss
 
       # 8. Generate the Windows installer using Inno Setup
       - name: Create Installer
         run: |
           cd build\windows\installer
-          ISCC setup.iss  # Ensure setup.iss is in the build\windows\installer directory
+          ISCC setup.iss
 
-      # 9. Upload the installer as a GitHub Release
+      # 9. Create the Release Tag (prepend "v" to avoid 40-char SHA)
+      - name: Create Release Tag
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag -a "v${{ github.sha }}" -m "Release tag from commit ${{ github.sha }}"
+
+      # 10. Upload the installer as a GitHub Release
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          # Use the commit SHA as the release tag for uniqueness
-          tag: ${{ github.sha }}
-          # Use the GitHub token to authenticate
-          token: ${{ secrets.TOKEN }}
-          # Upload the generated installer
-          artifacts: "build/windows/installer/Output/Doctor_Assistant.exe"  # Adjust path based on your Inno Setup script
+          # Use the tag with "v" prefix to avoid the 40-char SHA issue
+          tag: v${{ github.sha }}
+          # Use the PAT stored in the "ACTION" secret
+          token: ${{ secrets.ACTION }}
+          # Path to the generated installer
+          artifacts: "build/windows/installer/Output/Doctor_Assistant.exe"
           body: |
             ## Release Notes
             - Built from commit: [${{ github.sha }}](${{

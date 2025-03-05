@@ -2,8 +2,7 @@ name: Build and Release Windows Installer
 
 on:
   push:
-    branches:
-      - master
+    branches: [main]  # Trigger on pushes to the main branch
 
 jobs:
   build-and-release:
@@ -34,18 +33,23 @@ jobs:
           # Use Chocolatey to install Inno Setup
           choco install innosetup --yes
 
-      # 6. Copy the Inno Setup script to the build directory
-      - name: Copy Inno Setup Script
+      # 6. Create the installer directory if it doesn't exist
+      - name: Create Installer Directory
         run: |
           mkdir build\windows\installer
-          copy setup.iss build\windows\installer\setup.iss
 
-      # 7. Generate the Windows installer using Inno Setup
+      # 7. Copy the Inno Setup script to the build directory
+      - name: Copy Inno Setup Script
+        run: |
+          copy desktop_ino_script.iss build\windows\installer\setup.iss  # Use the actual script name
+
+      # 8. Generate the Windows installer using Inno Setup
       - name: Create Installer
         run: |
           cd build\windows\installer
-          desktop_ino_script.iss  # Ensure setup.iss is in the build\windows\installer directory
-      # 8. Upload the installer as a GitHub Release
+          ISCC setup.iss  # Ensure setup.iss is in the build\windows\installer directory
+
+      # 9. Upload the installer as a GitHub Release
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
